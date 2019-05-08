@@ -11,15 +11,17 @@ function loadSavedStateFromStorage(){
         state.url = localStorage.getItem("twinsUrl");
         state.tenantId = localStorage.getItem("twinsTenant");
         state.clientId = localStorage.getItem("twinsClient");
+        state.clientSecret = localStorage.getItem("twinsClientSecret");
     }
     return state;
 }
 
-function saveStateToStorage(url, tenantId, clientId){
+function saveStateToStorage(url, tenantId, clientId, clientSecret){
     if (typeof(Storage) !== "undefined") {
         localStorage.setItem("twinsUrl", url);
         localStorage.setItem("twinsTenant", tenantId);
         localStorage.setItem("twinsClient", clientId);                
+        localStorage.setItem("twinsClientSecret", clientSecret);                
     }
 }
 
@@ -33,4 +35,8 @@ function getTwinsTenantId(){
 
 function getTwinsClientId(){
     return localStorage.getItem("twinsClient");
+}
+
+function getTwinsClientSecret(){
+    return localStorage.getItem("twinsClientSecret");
 }

@@ -5,12 +5,49 @@
 var pageUrl = window.location.href;
 var user, authContext, message, errorMessage, loginButton, logoutButton;
 
-function authenticate() {
+var AuthenticationContextMock = (function () {
+
+    'use strict';
+
+    AuthenticationContextMock = function (config) {
+
+        if (AuthenticationContextMock.prototype._singletonInstance) {
+            return AuthenticationContextMock.prototype._singletonInstance;
+        }
+        AuthenticationContextMock.prototype._singletonInstance = this;
+
+        this.config = config;
+    };
+
+    AuthenticationContextMock.prototype.setToken = function (token) {
+        localStorage.setItem("token", token);
+    };
+
+    AuthenticationContextMock.prototype.getResourceForEndpoint = function (endpoint) {
+        return "";
+    };
+
+    AuthenticationContextMock.prototype.acquireToken = function (resource, callback) {
+        var token = localStorage.getItem("token");
+        if (token) {
+            callback(null, token, null);
+            return;
+        }
+    };
+
+    return AuthenticationContextMock;
+
+}());
+
+function authenticate(force) {
     var endpoints = {};
     endpoints[getTwinsInstanceRoot()] = "0b07f429-9f4b-4714-9392-cc5e8e80c8b0";
+
     var config = {
         tenant: getTwinsTenantId(),
         clientId: getTwinsClientId(),
+        clientSecret: getTwinsClientSecret(),
+        resource: '0b07f429-9f4b-4714-9392-cc5e8e80c8b0',
         postLogoutRedirectUri: pageUrl,
         redirectUri: pageUrl,
         endpoints: endpoints,
@@ -20,41 +57,77 @@ function authenticate() {
     console.log("URL: " + getTwinsInstanceRoot());
     console.log("Tenant: " + config.tenant);
     console.log("Client: " + config.clientId);
-
-    var localAuthContext = new AuthenticationContext(config);
-    // When a previous AuthenticationContext has already been created in this session the
-    // config seems to be cached and reused, even when creating a new object with a new config
-    localAuthContext.config = config;
+    console.log("Client Secret: " + config.clientSecret);
+    
+    var localAuthContext = new AuthenticationContextMock(config);
 
     // Check For & Handle Redirect From AAD After Login
-    var isCallback = localAuthContext.isCallback(window.location.hash);
-    if (isCallback) {
-        localAuthContext.handleWindowCallback();
-    }
-    var loginError = localAuthContext.getLoginError();
+    // var isCallback = localAuthContext.isCallback(window.location.hash);
+    // if (isCallback) {
+    //     localAuthContext.handleWindowCallback();
+    // }
+    // var loginError = localAuthContext.getLoginError();
 
-    if (isCallback && !loginError) {
-        window.location = localAuthContext._getItem(localAuthContext.CONSTANTS.STORAGE.LOGIN_REQUEST);
+    // localAuthContext.login();
+
+    // if (isCallback && !loginError) {
+    //     window.location = localAuthContext._getItem(localAuthContext.CONSTANTS.STORAGE.LOGIN_REQUEST);
+    // }
+    // else {
+    //     $("#errorMessage").text(loginError);
+    // }
+    // user = localAuthContext.getCachedUser();
+
+    username = localStorage.getItem("user_name");
+
+    window.config = config;
+    authContext = localAuthContext;
+
+    if (force === true || !username) {
+        $.ajax({
+            url: "https://login.microsoftonline.com/860f538f-7c04-4a6a-8654-72afc6cd7172/oauth2/token",
+            type: "POST",
+            contentType: "application/x-www-form-urlencoded", // send as JSON
+            data: "grant_type=client_credentials&client_id="+config.clientId+"&client_secret="+config.clientSecret+"&resource="+config.resource,
+          
+            success: function(response) {
+
+                localAuthContext.setToken(response.access_token);
+                authContext = localAuthContext;
+
+                user = {
+                    userName: config.clientId,
+                    profile: {
+                        name : config.clientId
+                    }
+                };
+                localStorage.setItem("user", user);
+                localStorage.setItem("user_name", config.clientId);
+
+                location.reload();
+            },
+          
+            error: function(loginError) {
+                $("#errorMessage").text(loginError);
+            },
+          });
     }
-    else {
-        $("#errorMessage").text(loginError);
-    }
-    user = localAuthContext.getCachedUser();
+
     // Doing this here, so it's already in the token cache when the 3 simultaneous ajax calls go out:
-    var resource = localAuthContext.getResourceForEndpoint(getBaseUrl());
-    localAuthContext.acquireToken(resource, function(error, token) {
-        if(error || !token){
-            handleTokenError(error);
-        }
-        else {
-            console.log("Succesfully retrieved token")}
-        }
-    );
-    if(user){
-        // only store the config and the context if we've authenticated the user
-        window.config = config;
-        authContext = localAuthContext;
-    }
+    // var resource = localAuthContext.getResourceForEndpoint(getBaseUrl());
+    // localAuthContext.acquireToken(resource, function(error, token) {
+    //     if(error || !token){
+    //         handleTokenError(error);
+    //     }
+    //     else {
+    //         console.log("Succesfully retrieved token")}
+    //     }
+    // );
+    // if(user){
+    //     // only store the config and the context if we've authenticated the user
+    //     window.config = config;
+    //     authContext = localAuthContext;
+    // }
 
     return localAuthContext;
 }
@@ -87,11 +160,13 @@ function handleTokenError(error) {
 
 function login() {
     // try to store fields for easier access next time
-    saveStateToStorage($("#twinsUrl").val(), $("#twinsTenantId").val(), $("#twinsClientId").val());
-    var localAuthContext = authenticate();
-    localAuthContext.login();
+    saveStateToStorage($("#twinsUrl").val(), $("#twinsTenantId").val(), $("#twinsClientId").val(), $("#twinsClientSecret").val());
+    var localAuthContext = authenticate(true);
+    //localAuthContext.login();
 }
 
 function logout() {
-    authContext.logOut();
+    localStorage.removeItem('user_name');
+    location.reload();
+    //authContext.logOut();
 }

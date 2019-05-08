@@ -23,15 +23,18 @@
     <script type="text/javascript">
 
         $(function () {
+            username = localStorage.getItem("user_name");
+            
             // try to populate inputs from config from storage
             prepopulateInputs();
 
-            if(getTwinsInstanceRoot() && getTwinsTenantId() && getTwinsClientId()){
+            if(getTwinsInstanceRoot() && getTwinsTenantId() && getTwinsClientId() && getTwinsClientSecret()){
                 authenticate();
             }
             
+            
             // If the user is logged in, let make sure we set everything.
-            if (user) {
+            if (username) {
                 // Hide the welcome message and show the visualizer div that holds the visualization.
                 $("#notSignedInMessage").hide();
                 $("#twinsConfig").hide();
@@ -46,7 +49,7 @@
                         $("#loginMenu").toggle();
                     });
                 $("#username")
-                    .text(user.profile.name);
+                    .text(username);
                 $("#signOut").click(function () { logout(); });
 
                 // Toggle for the drop down down Show menu
@@ -126,6 +129,9 @@
             if(state.clientId){
                 $("#twinsClientId").val(state.clientId);
             }
+            if(state.clientSecret){
+                $("#twinsClientSecret").val(state.clientSecret);
+            }
         }
     </script>
 
@@ -181,6 +187,11 @@
                             <li class="list-item" style="">
                                 <label class="twins-config-label">Client Id
                                 <input id="twinsClientId" type="text" placeholder="00000000-0000-0000-0000-000000000000"/>
+                                </label>
+                            </li>
+                            <li class="list-item" style="">
+                                <label class="twins-config-label">Client Secret
+                                <input id="twinsClientSecret" type="text" placeholder="OgG]*xsnsBv23syKhqI0L[xztw:eLUf7"/>
                                 </label>
                             </li>
                         </ul>
